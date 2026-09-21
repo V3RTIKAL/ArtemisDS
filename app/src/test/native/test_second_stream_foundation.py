@@ -140,5 +140,51 @@ class C3BridgeContractTest(unittest.TestCase):
         self.assertEqual(1, connection.count("MoonBridge.setupBridge("))
 
 
+class C4IndexedInputContractTest(unittest.TestCase):
+    def test_indexed_mouse_and_touch_jni_contract(self):
+        moon = (REPO / "app/src/main/java/com/limelight/nvstream/jni/MoonBridge.java").read_text(encoding="utf-8")
+        jni = (NATIVE / "simplejni.c").read_text(encoding="utf-8")
+        inp = (COMMON / "Input.h").read_text(encoding="utf-8")
+        stream = (COMMON / "InputStream.c").read_text(encoding="utf-8")
+        for name in ("sendMousePositionForDisplay", "sendMouseMoveAsMousePositionForDisplay", "sendTouchEventForDisplay"):
+            self.assertIn(name, moon)
+            self.assertIn("Java_com_limelight_nvstream_jni_MoonBridge_" + name, jni)
+        self.assertIn("displayIndex", inp)
+        self.assertIn("LiSendMousePositionEventForDisplay", stream)
+        self.assertIn("LiSendTouchEventForDisplay", stream)
+        self.assertIn("currentAbsoluteMouseState[MAX_INPUT_DISPLAYS]", stream)
+        self.assertIn("CTRL_CHANNEL_TOUCH_SECONDARY", stream)
+        self.assertIn("displayIndex < 0", jni)
+
+    def test_secondary_surface_lifecycle_contract_exists(self):
+        listener = (REPO / "app/src/main/java/com/limelight/nvstream/NvConnectionListener.java").read_text(encoding="utf-8")
+        presentation_path = REPO / "app/src/main/java/com/limelight/secondary/SecondaryDisplayPresentation.java"
+        self.assertIn("secondaryDisplayStatusChanged", listener)
+        self.assertIn("detachSecondDisplayBridge", (REPO / "app/src/main/java/com/limelight/nvstream/jni/MoonBridge.java").read_text(encoding="utf-8"))
+        self.assertTrue(presentation_path.is_file())
+        presentation = presentation_path.read_text(encoding="utf-8")
+        for token in ("extends Presentation", "SurfaceHolder.Callback", "surfaceCreated", "surfaceDestroyed"):
+            self.assertIn(token, presentation)
+
+    def test_legacy_primary_input_apis_remain_wrappers(self):
+        stream = (COMMON / "InputStream.c").read_text(encoding="utf-8")
+        self.assertIn("return LiSendMousePositionEventForDisplay(x, y, referenceWidth, referenceHeight, 0);", stream)
+        self.assertIn("contactAreaMajor, contactAreaMinor, rotation, 0);", stream)
+
+
+class C5C6PolicyContractTest(unittest.TestCase):
+    def test_deterministic_secondary_display_policy_and_selection(self):
+        selector = REPO / "app/src/main/java/com/limelight/secondary/SecondaryDisplayPolicy.java"
+        self.assertTrue(selector.is_file())
+        text = selector.read_text(encoding="utf-8")
+        for token in ("DISABLED", "AUTOMATIC", "FORCED", "select", "displayId"):
+            self.assertIn(token, text)
+
+    def test_policy_state_handles_reconnect_and_primary_degradation(self):
+        policy = (REPO / "app/src/main/java/com/limelight/secondary/SecondaryDisplayPolicy.java").read_text(encoding="utf-8")
+        for token in ("onDisplayAdded", "onDisplayRemoved", "primaryOnly", "reconnect"):
+            self.assertIn(token, policy)
+
+
 if __name__ == "__main__":
     unittest.main()

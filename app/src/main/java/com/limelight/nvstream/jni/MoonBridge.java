@@ -445,7 +445,11 @@ public class MoonBridge {
 
     public static native void sendMousePosition(short x, short y, short referenceWidth, short referenceHeight);
 
+    public static native void sendMousePositionForDisplay(short x, short y, short referenceWidth, short referenceHeight, short displayIndex);
+
     public static native void sendMouseMoveAsMousePosition(short deltaX, short deltaY, short referenceWidth, short referenceHeight);
+
+    public static native void sendMouseMoveAsMousePositionForDisplay(short deltaX, short deltaY, short referenceWidth, short referenceHeight, short displayIndex);
 
     public static native void sendMouseButton(byte buttonEvent, byte mouseButton);
 
@@ -457,6 +461,10 @@ public class MoonBridge {
 
     public static native int sendTouchEvent(byte eventType, int pointerId, float x, float y, float pressure,
                                             float contactAreaMajor, float contactAreaMinor, short rotation);
+
+    public static native int sendTouchEventForDisplay(byte eventType, int pointerId, float x, float y, float pressure,
+                                                      float contactAreaMajor, float contactAreaMinor, short rotation,
+                                                      short displayIndex);
 
     public static native int sendPenEvent(byte eventType, byte toolType, byte penButtons, float x, float y,
                                           float pressure, float contactAreaMajor, float contactAreaMinor,

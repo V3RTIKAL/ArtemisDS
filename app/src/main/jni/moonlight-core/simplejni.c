@@ -33,9 +33,28 @@ Java_com_limelight_nvstream_jni_MoonBridge_sendMousePosition(JNIEnv *env, jclass
 }
 
 JNIEXPORT void JNICALL
+Java_com_limelight_nvstream_jni_MoonBridge_sendMousePositionForDisplay(JNIEnv *env, jclass clazz,
+        jshort x, jshort y, jshort referenceWidth, jshort referenceHeight, jshort displayIndex) {
+    if (displayIndex < 0) {
+        return;
+    }
+    LiSendMousePositionEventForDisplay(x, y, referenceWidth, referenceHeight, (uint16_t)displayIndex);
+}
+
+JNIEXPORT void JNICALL
 Java_com_limelight_nvstream_jni_MoonBridge_sendMouseMoveAsMousePosition(JNIEnv *env, jclass clazz,
         jshort deltaX, jshort deltaY, jshort referenceWidth, jshort referenceHeight) {
     LiSendMouseMoveAsMousePositionEvent(deltaX, deltaY, referenceWidth, referenceHeight);
+}
+
+JNIEXPORT void JNICALL
+Java_com_limelight_nvstream_jni_MoonBridge_sendMouseMoveAsMousePositionForDisplay(JNIEnv *env, jclass clazz,
+        jshort deltaX, jshort deltaY, jshort referenceWidth, jshort referenceHeight, jshort displayIndex) {
+    if (displayIndex < 0) {
+        return;
+    }
+    LiSendMouseMoveAsMousePositionEventForDisplay(deltaX, deltaY, referenceWidth, referenceHeight,
+                                                  (uint16_t)displayIndex);
 }
 
 JNIEXPORT void JNICALL
@@ -61,6 +80,18 @@ Java_com_limelight_nvstream_jni_MoonBridge_sendTouchEvent(JNIEnv *env, jclass cl
                                                           jshort rotation) {
     return LiSendTouchEvent(eventType, pointerId, x, y, pressureOrDistance,
                             contactAreaMajor, contactAreaMinor, rotation);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_limelight_nvstream_jni_MoonBridge_sendTouchEventForDisplay(JNIEnv *env, jclass clazz,
+        jbyte eventType, jint pointerId, jfloat x, jfloat y, jfloat pressureOrDistance,
+        jfloat contactAreaMajor, jfloat contactAreaMinor, jshort rotation, jshort displayIndex) {
+    if (displayIndex < 0 || displayIndex > UINT8_MAX) {
+        return -3;
+    }
+    return LiSendTouchEventForDisplay(eventType, pointerId, x, y, pressureOrDistance,
+                                      contactAreaMajor, contactAreaMinor, rotation,
+                                      (uint8_t)displayIndex);
 }
 
 JNIEXPORT jint JNICALL
