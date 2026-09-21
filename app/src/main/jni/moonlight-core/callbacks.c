@@ -13,10 +13,12 @@
 static OpusMSDecoder* Decoder;
 static OPUS_MULTISTREAM_CONFIGURATION OpusConfig;
 
-static JavaVM *JVM;
+JavaVM *JVM;
 static pthread_key_t JniEnvKey;
 static pthread_once_t JniEnvKeyInitOnce = PTHREAD_ONCE_INIT;
-static jclass GlobalBridgeClass;
+jclass GlobalBridgeClass;
+
+void initializeSecondDisplayBridge(JNIEnv* env, jclass clazz);
 static jmethodID BridgeDrSetupMethod;
 static jmethodID BridgeDrStartMethod;
 static jmethodID BridgeDrStopMethod;
@@ -102,6 +104,7 @@ Java_com_limelight_nvstream_jni_MoonBridge_init(JNIEnv *env, jclass clazz) {
     BridgeClRumbleTriggersMethod = (*env)->GetStaticMethodID(env, clazz, "bridgeClRumbleTriggers", "(SSS)V");
     BridgeClSetMotionEventStateMethod = (*env)->GetStaticMethodID(env, clazz, "bridgeClSetMotionEventState", "(SBS)V");
     BridgeClSetControllerLEDMethod = (*env)->GetStaticMethodID(env, clazz, "bridgeClSetControllerLED", "(SBBB)V");
+    initializeSecondDisplayBridge(env, clazz);
 }
 
 int BridgeDrSetup(int videoFormat, int width, int height, int redrawRate, void* context, int drFlags) {
