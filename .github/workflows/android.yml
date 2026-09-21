@@ -1,0 +1,68 @@
+name: Android
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+      - 'ci/**'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK and NDK
+        run: >-
+          sdkmanager
+          'platforms;android-36'
+          'build-tools;36.0.0'
+          'ndk;27.0.12077973'
+
+      - name: Configure Android SDK
+        run: |
+          printf 'sdk.dir=%s\nndk.dir=%s/ndk/27.0.12077973\n' \
+            "$ANDROID_SDK_ROOT" "$ANDROID_SDK_ROOT" > local.properties
+
+      - name: Run unit tests and build debug APKs
+        run: ./gradlew --no-daemon --stacktrace test assembleDebug
+
+      - name: Upload APKs and test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: artemis-baseline-android
+          path: |
+            app/build/outputs/apk/**/*.apk
+            app/build/reports/tests/**
+            app/build/test-results/**
+            app/build/reports/lint-results-*.html
+          if-no-files-found: warn
+          retention-days: 14
