@@ -51,6 +51,15 @@
             seekbar:step="500" />
 
         <ListPreference
+            android:defaultValue="automatic"
+            android:entries="@array/secondary_display_mode_names"
+            android:entryValues="@array/secondary_display_mode_values"
+            android:key="secondary_display_mode"
+            android:summary="@string/summary_secondary_display_mode"
+            android:title="@string/title_secondary_display_mode"
+            app:iconSpaceReserved="false" />
+
+        <ListPreference
             android:defaultValue="latency"
             android:entries="@array/video_frame_pacing_names"
             android:entryValues="@array/video_frame_pacing_values"

@@ -119,6 +119,17 @@
         <item>neverh265</item>
     </string-array>
 
+    <string-array name="secondary_display_mode_names">
+        <item>@string/secondary_display_mode_disabled</item>
+        <item>@string/secondary_display_mode_automatic</item>
+        <item>@string/secondary_display_mode_forced</item>
+    </string-array>
+    <string-array name="secondary_display_mode_values" translatable="false">
+        <item>disabled</item>
+        <item>automatic</item>
+        <item>forced</item>
+    </string-array>
+
     <string-array name="video_frame_pacing_names">
         <item>@string/pacing_warp2</item>
         <item>@string/pacing_warp</item>

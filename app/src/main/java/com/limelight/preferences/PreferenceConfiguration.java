@@ -8,6 +8,7 @@ import android.view.Display;
 
 import com.limelight.nvstream.jni.MoonBridge;
 import com.limelight.profiles.ProfilesManager;
+import com.limelight.secondary.SecondaryDisplayPolicy;
 
 public class PreferenceConfiguration {
 
@@ -94,6 +95,7 @@ public class PreferenceConfiguration {
     private static final String GAMEPAD_MOTION_FALLBACK_PREF_STRING = "checkbox_gamepad_motion_fallback";
     private static final String FORCE_MOTION_SENSORS_FALLBACK_PREF_STRING = "checkbox_force_device_motion";
     private static final String FULL_SCREEN_PREF_STRING = "checkbox_full_screen";
+    public static final String SECONDARY_DISPLAY_MODE_PREF_STRING = "secondary_display_mode";
 
     private static final String ENABLE_RUMBLE_PREF_STRING = "checkbox_enable_rumble";
     private static final String PREVENT_PACKET_LOSS_PREF_STRING = "checkbox_prevent_packet_loss";
@@ -301,6 +303,7 @@ public class PreferenceConfiguration {
     public boolean enableNewAnalogStick;
 
     public boolean enableFullExDisplay;
+    public SecondaryDisplayPolicy.Mode secondaryDisplayMode;
 
     //串流画面顶部居中显示
     public boolean alignDisplayTopCenter;
@@ -1039,6 +1042,15 @@ private static int getFramePacingValue(Context context) {
         config.parallax_depth = prefs.getInt(PARALLAX_DEPTH, 50) / 100f;
         config.convergence_ratio = prefs.getInt(CONVERGENCE_RATIO, 50) / 100f;
         config.balance_shift = prefs.getInt(BALANCE_SHIFT, 50) / 100f;
+
+        String secondaryMode = prefs.getString(SECONDARY_DISPLAY_MODE_PREF_STRING, "automatic");
+        if ("disabled".equals(secondaryMode)) {
+            config.secondaryDisplayMode = SecondaryDisplayPolicy.Mode.DISABLED;
+        } else if ("forced".equals(secondaryMode)) {
+            config.secondaryDisplayMode = SecondaryDisplayPolicy.Mode.FORCED;
+        } else {
+            config.secondaryDisplayMode = SecondaryDisplayPolicy.Mode.AUTOMATIC;
+        }
 
         return config;
     }

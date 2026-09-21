@@ -23,4 +23,8 @@ public interface NvConnectionListener {
 
     default void secondDisplayStatusChanged(boolean active, int errorCode) {
     }
+
+    default void secondaryDisplayStatusChanged(boolean active, int errorCode) {
+        secondDisplayStatusChanged(active, errorCode);
+    }
 }
