@@ -328,17 +328,100 @@ public class MoonBridge {
         }
     }
 
+    // The second display's decoder. Native video threads read this while the UI
+    // may detach a Surface, so visibility between those threads is required.
+    private static volatile VideoDecoderRenderer videoRenderer2;
+
+    public static int bridgeDr2Setup(int videoFormat, int width, int height, int redrawRate) {
+        VideoDecoderRenderer renderer = videoRenderer2;
+        if (renderer != null) {
+            return renderer.setup(videoFormat, width, height, redrawRate);
+        }
+        else {
+            return -1;
+        }
+    }
+
+    public static void bridgeDr2Start() {
+        VideoDecoderRenderer renderer = videoRenderer2;
+        if (renderer != null) {
+            renderer.start();
+        }
+    }
+
+    public static void bridgeDr2Stop() {
+        VideoDecoderRenderer renderer = videoRenderer2;
+        if (renderer != null) {
+            renderer.stop();
+        }
+    }
+
+    public static void bridgeDr2Cleanup() {
+        VideoDecoderRenderer renderer = videoRenderer2;
+        if (renderer != null) {
+            renderer.cleanup();
+        }
+    }
+
+    public static int bridgeDr2SubmitDecodeUnit(byte[] decodeUnitData, int decodeUnitLength, int decodeUnitType,
+                                                int frameNumber, int frameType, char frameHostProcessingLatency,
+                                                long receiveTimeMs, long enqueueTimeMs) {
+        VideoDecoderRenderer renderer = videoRenderer2;
+        if (renderer != null) {
+            return renderer.submitDecodeUnit(decodeUnitData, decodeUnitLength,
+                    decodeUnitType, frameNumber, frameType, frameHostProcessingLatency, receiveTimeMs, enqueueTimeMs);
+        }
+        else {
+            return DR_OK;
+        }
+    }
+
+    /** Called by native code when only the optional video stream changes state. */
+    public static void bridgeClSecondDisplayStatusChanged(boolean active, int errorCode) {
+        NvConnectionListener listener = connectionListener;
+        if (listener != null) {
+            listener.secondDisplayStatusChanged(active, errorCode);
+        }
+    }
+
+    public static synchronized void setupSecondDisplayBridge(VideoDecoderRenderer videoRenderer,
+                                                             int width, int height, int fps,
+                                                             int bitrateKbps, int videoCapabilities) {
+        if (videoRenderer == null) {
+            detachSecondDisplayBridge();
+            return;
+        }
+        if (MoonBridge.videoRenderer2 != null) {
+            detachSecondDisplayBridge();
+        }
+        MoonBridge.videoRenderer2 = videoRenderer;
+        enableSecondDisplay(width, height, fps, bitrateKbps, videoCapabilities);
+    }
+
+    public static synchronized void detachSecondDisplayBridge() {
+        detachSecondDisplay();
+        videoRenderer2 = null;
+    }
+
     public static void setupBridge(VideoDecoderRenderer videoRenderer, AudioRenderer audioRenderer, NvConnectionListener connectionListener) {
         MoonBridge.videoRenderer = videoRenderer;
         MoonBridge.audioRenderer = audioRenderer;
         MoonBridge.connectionListener = connectionListener;
     }
 
-    public static void cleanupBridge() {
+    public static synchronized void cleanupBridge() {
+        detachSecondDisplayBridge();
         MoonBridge.videoRenderer = null;
         MoonBridge.audioRenderer = null;
         MoonBridge.connectionListener = null;
     }
+
+    private static native void enableSecondDisplay(int width, int height, int fps, int bitrateKbps,
+                                                   int videoCapabilities);
+
+    private static native void detachSecondDisplay();
+
+    public static native boolean isSecondDisplayActive();
 
     public static native int startConnection(String address, String appVersion, String gfeVersion,
                                               String rtspSessionUrl, int serverCodecModeSupport,

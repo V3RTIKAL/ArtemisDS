@@ -4,11 +4,11 @@ public interface NvConnectionListener {
     void stageStarting(String stage);
     void stageComplete(String stage);
     boolean stageFailed(String stage, int portFlags, int errorCode);
-    
+
     void connectionStarted();
     void connectionTerminated(int errorCode);
     void connectionStatusUpdate(int connectionStatus);
-    
+
     void displayMessage(String message);
     void displayTransientMessage(String message);
 
@@ -20,4 +20,7 @@ public interface NvConnectionListener {
     void setMotionEventState(short controllerNumber, byte motionType, short reportRateHz);
 
     void setControllerLED(short controllerNumber, byte r, byte g, byte b);
+
+    default void secondDisplayStatusChanged(boolean active, int errorCode) {
+    }
 }

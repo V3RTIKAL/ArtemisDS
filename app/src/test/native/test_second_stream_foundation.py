@@ -92,7 +92,52 @@ class SecondStreamFoundationTest(unittest.TestCase):
 
 
 class C3BridgeContractTest(unittest.TestCase):
-    pass
+    def test_independent_jni_decoder_bridge_is_built_and_initialized(self):
+        callbacks2 = (NATIVE / "callbacks2.c").read_text(encoding="utf-8")
+        callbacks = (NATIVE / "callbacks.c").read_text(encoding="utf-8")
+        android_mk = (NATIVE / "Android.mk").read_text(encoding="utf-8")
+
+        self.assertIn("callbacks2.c", android_mk)
+        self.assertIn("initializeSecondDisplayBridge(env, clazz);", callbacks)
+        self.assertIn("DecodedFrameBuffer2", callbacks2)
+        self.assertIn("BridgeVideoRendererCallbacks2", callbacks2)
+        self.assertIn("Java_com_limelight_nvstream_jni_MoonBridge_enableSecondDisplay", callbacks2)
+        self.assertIn("Java_com_limelight_nvstream_jni_MoonBridge_detachSecondDisplay", callbacks2)
+        self.assertIn("Java_com_limelight_nvstream_jni_MoonBridge_isSecondDisplayActive", callbacks2)
+
+    def test_second_bridge_uses_shared_jvm_without_sharing_decoder_state(self):
+        callbacks = (NATIVE / "callbacks.c").read_text(encoding="utf-8")
+        callbacks2 = (NATIVE / "callbacks2.c").read_text(encoding="utf-8")
+
+        self.assertIn("JavaVM *JVM;", callbacks)
+        self.assertIn("jclass GlobalBridgeClass;", callbacks)
+        self.assertIn("extern JavaVM* JVM;", callbacks2)
+        self.assertIn("extern jclass GlobalBridgeClass;", callbacks2)
+        self.assertNotIn("DecodedFrameBuffer;", callbacks2)
+
+    def test_moon_bridge_exposes_independent_renderer_lifecycle(self):
+        moon_bridge = (REPO / "app/src/main/java/com/limelight/nvstream/jni/MoonBridge.java").read_text(encoding="utf-8")
+        listener = (REPO / "app/src/main/java/com/limelight/nvstream/NvConnectionListener.java").read_text(encoding="utf-8")
+
+        for method in (
+            "bridgeDr2Setup",
+            "bridgeDr2Start",
+            "bridgeDr2Stop",
+            "bridgeDr2Cleanup",
+            "bridgeDr2SubmitDecodeUnit",
+            "setupSecondDisplayBridge",
+            "detachSecondDisplayBridge",
+            "isSecondDisplayActive",
+        ):
+            self.assertIn(method, moon_bridge)
+        self.assertIn("bridgeClSecondDisplayStatusChanged", moon_bridge)
+        self.assertIn("private static volatile VideoDecoderRenderer videoRenderer2;", moon_bridge)
+        self.assertIn("default void secondDisplayStatusChanged", listener)
+
+    def test_primary_connection_remains_single(self):
+        connection = (REPO / "app/src/main/java/com/limelight/nvstream/NvConnection.java").read_text(encoding="utf-8")
+        self.assertEqual(1, connection.count("MoonBridge.startConnection("))
+        self.assertEqual(1, connection.count("MoonBridge.setupBridge("))
 
 
 if __name__ == "__main__":
