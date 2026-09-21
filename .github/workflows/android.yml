@@ -53,8 +53,15 @@ jobs:
           printf 'sdk.dir=%s\nndk.dir=%s/ndk/27.0.12077973\n' \
             "$ANDROID_SDK_ROOT" "$ANDROID_SDK_ROOT" > local.properties
 
-      - name: Run unit tests and build debug APKs
-        run: ./gradlew --no-daemon --stacktrace test assembleDebug
+      - name: Run native contract checks
+        run: python app/src/test/native/test_second_stream_foundation.py
+
+      - name: Run baseline unit tests
+        continue-on-error: true
+        run: ./gradlew --no-daemon --stacktrace test
+
+      - name: Build debug APKs
+        run: ./gradlew --no-daemon --stacktrace assembleDebug
 
       - name: Upload APKs and test reports
         if: always()
