@@ -83,7 +83,7 @@ class SecondStreamFoundationTest(unittest.TestCase):
             self.skipTest("no host C compiler")
 
         result = subprocess.run(
-            [compiler, "-std=c11", "-fsyntax-only", "-Isrc", "-Ireedsolomon", "src/SdpGenerator.c", "src/RtspConnection.c", "src/Connection.c"],
+            [compiler, "-std=c11", "-fsyntax-only", "-Isrc", "-Ireedsolomon", "-Ienet/include", "src/SdpGenerator.c", "src/RtspConnection.c", "src/Connection.c"],
             cwd=COMMON.parent,
             capture_output=True,
             text=True,
