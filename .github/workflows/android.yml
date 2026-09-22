@@ -54,7 +54,7 @@ jobs:
             "$ANDROID_SDK_ROOT" "$ANDROID_SDK_ROOT" > local.properties
 
       - name: Run native contract checks
-        run: python app/src/test/native/test_second_stream_foundation.py
+        run: python -m unittest discover -s app/src/test/native -p 'test_*.py'
 
       - name: Run baseline unit tests
         continue-on-error: true

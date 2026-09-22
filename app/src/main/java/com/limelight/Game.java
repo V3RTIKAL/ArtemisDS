@@ -40,6 +40,8 @@ import com.limelight.nvstream.jni.MoonBridge;
 import com.limelight.preferences.GlPreferences;
 import com.limelight.preferences.PreferenceConfiguration;
 import com.limelight.profiles.ProfilesManager;
+import com.limelight.secondary.SecondaryDisplayPolicy;
+import com.limelight.secondary.SecondaryDisplayPresentation;
 import com.limelight.ui.ExternalControllerView;
 import com.limelight.ui.GameGestures;
 import com.limelight.ui.StreamContainer;
@@ -231,6 +233,12 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     private TextView performanceOverlayBig;
 
     private MediaCodecDecoderRenderer decoderRenderer;
+    private MediaCodecDecoderRenderer secondaryDecoderRenderer;
+    private SecondaryDisplayPresentation secondaryDisplayPresentation;
+    private SecondaryDisplayPolicy secondaryDisplayPolicy;
+    private boolean secondaryDisplayRequested;
+    private boolean primarySurfaceReady;
+    private boolean secondarySurfaceReady;
     private boolean reportedCrash;
 
     private WifiManager.WifiLock highPerfWifiLock;
@@ -861,21 +869,13 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             return;
         }
 
-        // The connection will be started when the surface gets created
-        //streamContainer.getHolder().addCallback(this);
+        initializeSecondaryDisplay(currentDisplay, connMgr.isActiveNetworkMetered(), glPrefs.glRenderer);
 
+        // The connection will be started when all requested surfaces are ready.
         streamContainer.setOnSurfaceAvailable(() -> {
-            if (!attemptedConnection) {
-                LimeLog.info("Surface is available, starting connection...");
-                attemptedConnection = true;
-
-                // Der Decoder erhält die jeweils aktive Oberfläche vom Container
-                decoderRenderer.setRenderTarget(streamContainer.getSurface());
-
-                // Starten Sie die NvConnection
-                conn.start(new AndroidAudioRenderer(Game.this, prefConfig.playHostAudio),
-                        decoderRenderer, Game.this);
-            }
+            primarySurfaceReady = true;
+            decoderRenderer.setRenderTarget(streamContainer.getSurface());
+            maybeStartConnection();
         });
 
         gameMenuCallbacks = new GameMenu(this);
@@ -932,6 +932,93 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 }
             }
         } catch (Throwable ignored) {}
+    }
+
+    private void initializeSecondaryDisplay(Display primaryDisplay, boolean meteredData, String glRenderer) {
+        secondaryDisplayPolicy = new SecondaryDisplayPolicy(prefConfig.secondaryDisplayMode);
+        DisplayManager displayManager = (DisplayManager) getSystemService(Context.DISPLAY_SERVICE);
+        Display secondaryDisplay = secondaryDisplayPolicy.select(primaryDisplay, displayManager.getDisplays());
+        if (secondaryDisplay == null) {
+            return;
+        }
+
+        secondaryDisplayRequested = true;
+        Display.Mode secondaryMode = secondaryDisplay.getMode();
+        int secondaryWidth = secondaryMode.getPhysicalWidth();
+        int secondaryHeight = secondaryMode.getPhysicalHeight();
+        int secondaryFps = Math.max(1, Math.round(secondaryMode.getRefreshRate()));
+
+        secondaryDecoderRenderer = new MediaCodecDecoderRenderer(
+                this,
+                prefConfig,
+                e -> LimeLog.severe("Secondary decoder crashed: " + e),
+                0,
+                meteredData,
+                false,
+                false,
+                glRenderer,
+                text -> { });
+
+        secondaryDisplayPresentation = new SecondaryDisplayPresentation(
+                this,
+                secondaryDisplay,
+                new SecondaryDisplayPresentation.SurfaceListener() {
+                    @Override
+                    public void surfaceAvailable(SurfaceHolder holder, int width, int height) {
+                        secondaryDecoderRenderer.setRenderTarget(holder.getSurface());
+                        MoonBridge.setupSecondDisplayBridge(
+                                secondaryDecoderRenderer,
+                                secondaryWidth,
+                                secondaryHeight,
+                                secondaryFps,
+                                prefConfig.bitrate,
+                                secondaryDecoderRenderer.getCapabilities());
+                        secondarySurfaceReady = true;
+                        maybeStartConnection();
+                    }
+
+                    @Override
+                    public void surfaceDestroying(SurfaceHolder holder) {
+                        secondarySurfaceReady = false;
+                        if (secondaryDecoderRenderer != null) {
+                            secondaryDecoderRenderer.prepareForStop();
+                        }
+                        MoonBridge.detachSecondDisplayBridge();
+                    }
+                });
+        try {
+            secondaryDisplayPresentation.show();
+        } catch (WindowManager.InvalidDisplayException e) {
+            LimeLog.warning("Secondary display disappeared before its Presentation opened");
+            secondaryDisplayRequested = false;
+            secondaryDisplayPresentation = null;
+        }
+    }
+
+    private void maybeStartConnection() {
+        if (attemptedConnection || !primarySurfaceReady ||
+                (secondaryDisplayRequested && !(primarySurfaceReady && secondarySurfaceReady))) {
+            return;
+        }
+
+        LimeLog.info("Required display surfaces are available, starting connection...");
+        attemptedConnection = true;
+        conn.start(new AndroidAudioRenderer(Game.this, prefConfig.playHostAudio),
+                decoderRenderer, Game.this);
+    }
+
+    private void teardownSecondaryDisplay() {
+        if (secondaryDecoderRenderer != null) {
+            secondaryDecoderRenderer.prepareForStop();
+        }
+        MoonBridge.detachSecondDisplayBridge();
+        secondarySurfaceReady = false;
+        secondaryDisplayRequested = false;
+        if (secondaryDisplayPresentation != null) {
+            secondaryDisplayPresentation.dismiss();
+            secondaryDisplayPresentation = null;
+        }
+        secondaryDecoderRenderer = null;
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -1704,6 +1791,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
         instance = null;
         timerHandler.removeCallbacksAndMessages(null);
+
+        teardownSecondaryDisplay();
 
         if (prefConfig.enableFullExDisplay) handleDisplayRemoved();
 
@@ -3641,6 +3730,17 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 }
             }
         });
+    }
+
+    @Override
+    public void secondDisplayStatusChanged(boolean active, int errorCode) {
+        LimeLog.info("Secondary display stream active=" + active + " error=" + errorCode);
+        if (!active && errorCode != 0) {
+            runOnUiThread(() -> Toast.makeText(
+                    Game.this,
+                    "Secondary display stream unavailable (" + errorCode + ")",
+                    Toast.LENGTH_LONG).show());
+        }
     }
 
     @Override
